@@ -1,25 +1,36 @@
-import * as http from 'http';
+import * as http from 'http'
 import request from './request.js'
-import users from './users.js'
+import usersFunctions from './users.js'
+import timer from "./timer.js"
 
 const hostname = '127.0.0.1'
 const port = 3000
 
-const users = users.getUsers()
+const users = usersFunctions.getUsers()
 
-const menuButtons = `reply_markup={
+const settingsButtons = `reply_markup={
   "keyboard": [
     [{ "text": "add" },
      { "text": "reduce" }
     ],[
      { "text": "price" },
-     { "text": "value" }
+     { "text": "balance" }
     ],[
-      { "text": "starting" }
+      { "text": "start" },
+      { "text": "parameters" }
+    ],[
+      { "text": "average costs"}
     ]
   ]}`
 
-const priceMenu = `reply_markup={
+const menu = `reply_markup={
+  "keyboard": [
+    [
+      { "text": "menu" }
+    ]
+  ]}`
+
+const priceButtons = `reply_markup={
   "keyboard": [
     [{ "text": "5" },
      { "text": "10" }
@@ -50,27 +61,71 @@ const server = http.createServer((req, res) => {
     }
 
     if (!users[user.id]) {
-      console.log(user)
-      users.addUser(user)
-      request.sendMessage('/sendMessage', JSON.stringify(menuButtons))
+      usersFunctions.addUser(user)
+      usersFunctions.setTime(user)
+      request.sendMessage('/sendMessage', JSON.stringify(settingsButtons))
     } else {
+      let user = users[user.id]
+      let menuItemGeted = false
       switch (message.text) {
         case "add":
         case "reduce":
         case "price":
-        case "value":
-          user.lastMessage = message.text    
-          request.sendMessage('/sendMessage', JSON.stringify(priceMenu))
-        case "5":
-        case "10":
-        case "20":
-        case "50":
+        case "balance":
+          user.lastMessage = message.text
+          request.sendMessage('/sendMessage', JSON.stringify(priceButtons))
+          menuItemGeted = true
+          break
+        case "start":
+          request.sendMessage('/sendMessage', JSON.stringify(menu))
+          menuItemGeted = true
+          this.timer(users)
+          break
+        case "parameters":
+          request.sendMessage('/sendMessage', JSON.stringify(users))
+          menuItemGeted = true
+          break
+        case "menu":
+          request.sendMessage('/sendMessage', JSON.stringify(settingsButtons))
+          menuItemGeted = true
+          break
+        case "average costs":
+          user.lastMessage = "averageCost"
+          request.sendMessage('/sendMessage', JSON.stringify({text: "enter yor month average costs"}))
+          menuItemGeted = true
+          break
+        default:
+          break
+      }
+
+      if (!menuItemGeted && +message.text >= 0) {
+        if (["add", "reduce", "price", "balance"].includes(user.lastMessage)) {
+          let value = +message.text
+          let key = user.lastMessage
+          switch (user.lastMessage) {
+            case "price":
+              user[key] = value
+              break
+            case "balance":
+              user[key] = value * (user.price/2592000 || 1)
+              break
+            case "add":
+              users.addValue(user, value)
+              break
+            case "reduce":
+              users.reduceValue(user, value)
+              break
+            default:
+              break
+          }
+          request.sendMessage('/sendMessage', JSON.stringify(menu))
+        }
+
+        if (user.lastMessage == 'averageCost') {
           let key = user.lastMessage
           user[key] = +message.text
-          users.updateUser(user)
-          request.sendMessage('/sendMessage', JSON.stringify(removeMarkup))
-        default:
-          break;
+          request.sendMessage('/sendMessage', JSON.stringify(menu))
+        }
       }
     }
     
@@ -79,9 +134,8 @@ const server = http.createServer((req, res) => {
   res.statusCode = 200
   res.setHeader('Content-Type', 'text/plain')
   res.end('Hello World')
-});
+})
 
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`)
-});
-
+})

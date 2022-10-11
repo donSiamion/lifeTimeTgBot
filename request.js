@@ -10,10 +10,10 @@ async function sendMessage(urlEnd, body) {
         method: 'post',
         body,
         headers: {'Content-Type': 'application/x-www-form-urlencoded', 'accept': 'application/json'}
-    });
-    const data = await response.json();
+    })
+    const data = await response.json()
     
-    console.log(data.ok)
+    return data
 }
 
 export default {

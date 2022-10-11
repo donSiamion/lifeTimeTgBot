@@ -21,9 +21,19 @@ function updateUser(user) {
     this.saveUsers(thisUser)
 }
 
+function addValue(user, value) {
+    user.balance += value * (user.price/2592000 || 1)
+}
+
+function reduceValue(user, value) {
+    user.balance += value * (user.price/2592000 || 1)
+}
+
 export default {
     getUsers,
     saveUsers,
     addUser,
-    updateUser
+    updateUser,
+    addValue,
+    reduceValue
 }
